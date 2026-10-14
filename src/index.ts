@@ -9,6 +9,8 @@ export type {
   MarkAsReadResult,
   SendEmailParams,
   SendEmailResult,
+  CustomAddressAvailability,
+  CustomAddressState,
 } from './types.js';
 export {
   SignicError,
@@ -16,3 +18,12 @@ export {
   SignicNetworkError,
   SignicValidationError,
 } from './errors.js';
+export type { ParsedSubaddress } from './subaddress.js';
+export {
+  parseSubaddress,
+  stripSubaddressTag,
+  getSubaddressTag,
+  hasSubaddressTag,
+  buildSubaddress,
+  sameBaseAddress,
+} from './subaddress.js';

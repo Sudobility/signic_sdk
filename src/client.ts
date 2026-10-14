@@ -13,6 +13,8 @@ import type {
   IndexerResponse,
   IndexerSignInMessageData,
   IndexerEmailAccountsResult,
+  CustomAddressAvailability,
+  CustomAddressState,
   WildduckAuthResponse,
   WildduckMailboxResponse,
   WildduckMessagesResponse,
@@ -329,6 +331,108 @@ export class SignicClient {
   }
 
   // ============================================================
+  // Custom (user-defined) address
+  // ============================================================
+
+  /**
+   * Check whether a desired custom address local part is available.
+   *
+   * Public — does not require {@link connect}.
+   *
+   * @param name - Desired local part (e.g. "john"); lowercased server-side
+   * @returns Availability result; when unavailable, `reason` explains why
+   * @throws {SignicError} If the request fails
+   */
+  async checkCustomAddressAvailability(
+    name: string
+  ): Promise<CustomAddressAvailability> {
+    const endpoint = `${this.indexerUrl}/addresses/custom/${encodeURIComponent(name)}/availability`;
+
+    const response = await httpGet<IndexerResponse<CustomAddressAvailability>>(
+      endpoint,
+      { 'Content-Type': 'application/json', Accept: 'application/json' }
+    );
+
+    if (!response.data.success || !response.data.data) {
+      throw new SignicError(
+        response.data.error ?? 'Failed to check custom address availability',
+        'checkCustomAddressAvailability',
+        response.status
+      );
+    }
+
+    return response.data.data;
+  }
+
+  /**
+   * Get the connected wallet's custom (user-defined) address state — the active
+   * custom address, if any, and the remaining set allowance.
+   *
+   * Requires {@link connect}.
+   *
+   * @throws {SignicAuthError} If not connected
+   * @throws {SignicError} If the request fails
+   */
+  async getCustomAddress(): Promise<CustomAddressState> {
+    this.requireAuth();
+    const address = this.authState!.username;
+    const endpoint = `${this.indexerUrl}/wallets/${encodeURIComponent(address)}/custom-address`;
+
+    const response = await httpGet<IndexerResponse<CustomAddressState>>(
+      endpoint,
+      await this.indexerAuthHeaders()
+    );
+
+    if (!response.data.success || !response.data.data) {
+      throw new SignicError(
+        response.data.error ?? 'Failed to get custom address',
+        'getCustomAddress',
+        response.status
+      );
+    }
+
+    return response.data.data;
+  }
+
+  /**
+   * Claim (set) a custom (user-defined) address for the connected wallet.
+   *
+   * A custom address can be set only once (subject to the remaining allowance),
+   * and is rejected if it is already taken, reserved, looks like a wallet
+   * address, or ends in an ENS/SNS postfix. Use
+   * {@link checkCustomAddressAvailability} first to validate interactively.
+   *
+   * Requires {@link connect}.
+   *
+   * @param name - Desired local part (e.g. "john"); lowercased server-side
+   * @returns The updated custom address state
+   * @throws {SignicAuthError} If not connected
+   * @throws {SignicValidationError} If the name is rejected (400)
+   * @throws {SignicError} On conflict (409) or other errors
+   */
+  async setCustomAddress(name: string): Promise<CustomAddressState> {
+    this.requireAuth();
+    const address = this.authState!.username;
+    const endpoint = `${this.indexerUrl}/wallets/${encodeURIComponent(address)}/custom-address`;
+
+    const response = await httpPost<IndexerResponse<CustomAddressState>>(
+      endpoint,
+      { address: name },
+      await this.indexerAuthHeaders()
+    );
+
+    if (!response.data.success || !response.data.data) {
+      throw new SignicError(
+        response.data.error ?? 'Failed to set custom address',
+        'setCustomAddress',
+        response.status
+      );
+    }
+
+    return response.data.data;
+  }
+
+  // ============================================================
   // Private helpers
   // ============================================================
 
@@ -521,6 +625,22 @@ export class SignicClient {
     const signature = this.formatSignatureToBase64(result.signature);
 
     return { message, signature };
+  }
+
+  /**
+   * Build the signature-gated header trio (x-signature / x-message / x-signer)
+   * for Indexer API calls, signing a fresh message via the signMessage callback.
+   * Requires {@link connect} (uses the connected wallet as the signer).
+   */
+  private async indexerAuthHeaders(): Promise<Record<string, string>> {
+    const auth = await this.generateIndexerAuth();
+    return {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'x-signature': auth.signature.replace(/[\r\n]/g, ''),
+      'x-message': encodeURIComponent(auth.message),
+      'x-signer': this.authState!.username,
+    };
   }
 
   /** Map a WildDuck message list item to the public SignicEmail shape. */

@@ -235,6 +235,30 @@ export interface IndexerEmailAccountsResult {
   accounts: IndexerWalletAccount[];
 }
 
+/** Availability of a desired custom (user-defined) address local part. */
+export interface CustomAddressAvailability {
+  /** Normalized (lowercased) local part that was checked. */
+  name: string;
+  available: boolean;
+  /**
+   * When unavailable, why: 'taken' | 'reserved' | 'wallet_address' |
+   * 'name_service_postfix' | 'invalid_format' | 'no_credits' | 'already_set'.
+   */
+  reason?: string | null;
+  /** For 'name_service_postfix' rejections: which service claims the postfix. */
+  service?: 'ENS' | 'SNS' | null;
+}
+
+/** A wallet's custom (user-defined) address state. */
+export interface CustomAddressState {
+  walletAddress: string;
+  chainType: string;
+  /** The active custom local part (e.g. "john"), or null if none set. */
+  customAddress: string | null;
+  /** Remaining number of times the user may (re)set a custom address. */
+  creditsRemaining: number;
+}
+
 // --- WildDuck API types ---
 
 /** Response from POST /authenticate. */
