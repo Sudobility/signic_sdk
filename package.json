@@ -1,6 +1,6 @@
 {
   "name": "@sudobility/signic_sdk",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Node.js and browser SDK for Signic email - sign in with Ethereum or Solana, read and manage emails",
   "type": "module",
   "main": "./dist/index.js",
@@ -53,5 +53,9 @@
   "license": "BUSL-1.1",
   "publishConfig": {
     "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sudobility/signic_sdk.git"
   }
 }
